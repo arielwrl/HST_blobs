@@ -1,0 +1,9 @@
+*.fits
+*.csv
+*.ecsv
+*.png
+*.pdf
+*.txt
+*.points
+*.dat
+*.h5
