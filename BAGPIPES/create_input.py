@@ -18,12 +18,8 @@ Updated to include extraplanar clumps
 
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
-from astropy.io import fits
-from astropy.wcs import WCS
 from astropy.table import Table
-from pysinopsis.masking import create_mask
 
 plt.ioff()
 

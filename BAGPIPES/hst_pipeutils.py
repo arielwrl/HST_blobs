@@ -69,6 +69,9 @@ def parametric_plots(fit, blob_id, blob_index, blob_catalog, plot_dir):
                            blob_catalog['yc_pix(HST)'][blob_index]))
     fig[0].set_size_inches(10, 6)
     plt.savefig(plot_dir + '/fit_'+blob_id+'.png', dpi=100)
+
+    plt.close(fig[0])
+
     try:
         fig = fit.plot_sfh_posterior(save=False, show=False)
         plt.gca().set_title(plot_id + ', x= %0.2f , y= %0.2f'
@@ -76,16 +79,19 @@ def parametric_plots(fit, blob_id, blob_index, blob_catalog, plot_dir):
                                blob_catalog['yc_pix(HST)'][blob_index]))
         fig[0].set_size_inches(10, 6)
         plt.savefig(plot_dir + '/sfh_' + blob_id + '.png', dpi=100)
+
+        plt.close(fig[0])
+
     except Exception:
         pass
-    fig = fit.plot_corner(save=False, show=False)
-    fig.suptitle(plot_id + ', x= %0.2f , y= %0.2f'
-                        % (blob_catalog['xc_pix(HST)'][blob_index],
-                           blob_catalog['yc_pix(HST)'][blob_index]))
-    plt.savefig(plot_dir + '/par_' + blob_id + '.png', dpi=89)
 
-    plt.close('all')
-
+    # fig = fit.plot_corner(save=False, show=False)
+    # fig.suptitle(plot_id + ', x= %0.2f , y= %0.2f'
+    #                     % (blob_catalog['xc_pix(HST)'][blob_index],
+    #                        blob_catalog['yc_pix(HST)'][blob_index]))
+    # plt.savefig(plot_dir + '/par_' + blob_id + '.png', dpi=89)
+    #
+    # plt.close()
 
 def nonparametric_plots(fit, blob_id, blob_index, blob_catalog, plot_dir):
 

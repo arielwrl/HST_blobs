@@ -14,32 +14,19 @@ from astropy.table import Table
 
 sns.set_style('ticks')
 
-results = Table.read('/home/ariel/Workspace/GASP/HST/Data/extraplanar_matched.fits')
+results = Table.read('/home/ariel/Workspace/GASP/HST/Data/old/extraplanar_matched.fits')
 
-fig, ax = plt.subplots(2, 2)
+fig, ax = plt.subplots(3, 1)
 
-ax[0, 0].scatter(results['age'], results['age_young'], alpha=0.5)
-ax[0, 0].set_xlim(0, 0.3)
-ax[0, 0].set_ylim(0, 0.3)
-ax[0, 0].set_xlabel(r'Age (Single)')
-ax[0, 0].set_ylabel(r'Age (Double)')
+ax[0].hist((results['age'] - results['age_young'])/results['age'], alpha=0.5)
+ax[0].set_xlabel(r'$(t^\star_\mathrm{single}-t^\star_\mathrm{double})/t^\star_\mathrm{single}$')
 
-ax[0, 1].scatter(results['Av_1']*results['eta_1'], results['Av_2']*results['eta_2'], alpha=0.5)
-ax[0, 1].set_xlim(0, 1)
-ax[0, 1].set_ylim(0, 1)
-ax[0, 1].set_xlabel(r'$A_V$ (Single)')
-ax[0, 1].set_ylabel(r'$A_V$ (Double)')
+ax[1].hist(results['Av_1']*results['eta_1'] - results['Av_2']*results['eta_2'], alpha=0.5)
+ax[1].set_xlabel(r'$(A_V_\mathrm{single}-A_V_\mathrm{double}/A_V_\mathrm{single}$')
 
-ax[1, 0].scatter(results['formed_mass'], results['formed_mass_young'], alpha=0.5)
-ax[1, 0].set_xlim(4, 7.5)
-ax[1, 0].set_ylim(4, 7.5)
-ax[1, 0].set_xlabel(r'Mass Formed (Single)')
-ax[1, 0].set_ylabel(r'Mass Formed (Double)')
-
-ax[1, 1].scatter(results['tau'], results['tau_young'], alpha=0.5)
-ax[1, 1].set_xlabel(r'$\tau$ (Single)')
-ax[1, 1].set_ylabel(r'$\tau$ (Double)')
-
+ax[2].hist(results['formed_mass']- results['formed_mass_young'], alpha=0.5)
+ax[2].set_xlabel(r'$(\log\;M^\star/M_\odot_\mathrm{single}-\log\;M^\star/M_\odot_\mathrm{double}/\log\;M^\star'
+                 r'/M_\odot_\mathrm{single}$')
 
 sns.despine()
 
