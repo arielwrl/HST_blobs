@@ -17,6 +17,9 @@ from toolbox import plot_tools
 
 sns.set_style('ticks')
 
+distribution_variable = 'mwage'
+selection = 'tail'
+
 mass_dict = {'JO201': 44194800000,
              'JO204': 54968402000,
              'JW100': 292875993000,
@@ -29,9 +32,19 @@ halpha_input = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_halpha_bagpi
 f275w_input = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_f275w_bagpipes_input.fits')
 f606w_input = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_f606w_bagpipes_input.fits')
 
-tail_halpha = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_halpha_parametric_bagpipes_results.fits')[halpha_input['sel_flag']==31]
-tail_f275w = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_f275w_parametric_bagpipes_results.fits')[f275w_input['sel_flag']==31]
-tail_f606w = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_f606w_parametric_bagpipes_results.fits')[f606w_input['sel_flag']==31]
+tail_halpha = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_halpha_parametric_bagpipes_results.fits')
+tail_f275w = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_f275w_parametric_bagpipes_results.fits')
+tail_f606w = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_f606w_parametric_bagpipes_results.fits')
+
+if selection == 'tail':
+    tail_halpha = tail_halpha[(halpha_input['sel_flag'] == 31) & (halpha_input['tail_gal_flag'] == 0)]
+    tail_f275w = tail_f275w[(f275w_input['sel_flag'] == 31) & (f275w_input['tail_gal_flag'] == 0)]
+    tail_f606w = tail_f606w[(f606w_input['sel_flag'] == 31) & (f606w_input['tail_gal_flag'] == 0)]
+
+if selection == 'extraplanar':
+    tail_halpha = tail_halpha[(halpha_input['sel_flag'] == 31) & (halpha_input['tail_gal_flag'] == 1)]
+    tail_f275w = tail_f275w[(f275w_input['sel_flag'] == 31) & (f275w_input['tail_gal_flag'] == 1)]
+    tail_f606w = tail_f606w[(f606w_input['sel_flag'] == 31) & (f606w_input['tail_gal_flag'] == 1)]
 
 tail_halpha['galaxy'] = tail_halpha['galaxy'].astype(str)
 tail_f275w['galaxy'] = tail_f275w['galaxy'].astype(str)
@@ -65,12 +78,11 @@ halpha_df = tail_halpha['galaxy', 'blob_id', 'age', 'tau', 'mwage', 'mass', 'gal
 f275w_df = tail_f275w['galaxy', 'blob_id', 'age', 'tau', 'mwage', 'mass', 'galaxy_mass', 'sfr', 'Av'].to_pandas()
 f606w_df = tail_f606w['galaxy', 'blob_id', 'age', 'tau', 'mwage', 'mass', 'galaxy_mass', 'sfr', 'Av'].to_pandas()
 
-distribution_variable = 'Av'
-
 halpha_df.sort_values(by='galaxy_mass', inplace=True)
 f275w_df.sort_values(by='galaxy_mass', inplace=True)
 f606w_df.sort_values(by='galaxy_mass', inplace=True)
 
+if selection == 'tail':
 fig, ax = plt.subplots(1, 3, figsize=(10, 6.5), sharey=True)
 
 box_halpha = ax[0]
@@ -92,16 +104,16 @@ sns.boxplot(y='galaxy', x=distribution_variable, data=f275w_df, whis=[15, 85], w
 sns.boxplot(y='galaxy', x=distribution_variable, data=f606w_df, whis=[15, 85], width=.6, palette='light:#8DB580'
             , fliersize=0, ax=box_f606w)
 
-sns.kdeplot(distribution_variable, data=halpha_df, color='#DD2D4A', ax=hist_halpha, shade=True, alpha=0.25)
-sns.kdeplot(distribution_variable, data=f275w_df, color='#758BFD', ax=hist_f275w, shade=True, alpha=0.25)
-sns.kdeplot(distribution_variable, data=f606w_df, color='#8DB580', ax=hist_f606w, shade=True, alpha=0.25)
+sns.kdeplot(x=distribution_variable, data=halpha_df, color='#DD2D4A', ax=hist_halpha, shade=True, alpha=0.25)
+sns.kdeplot(x=distribution_variable, data=f275w_df, color='#758BFD', ax=hist_f275w, shade=True, alpha=0.25)
+sns.kdeplot(x=distribution_variable, data=f606w_df, color='#8DB580', ax=hist_f606w, shade=True, alpha=0.25)
 
 hist_halpha.set_xlim(np.percentile(tail_halpha[distribution_variable], 2.5),
                      np.percentile(tail_halpha[distribution_variable], 95))
 hist_f275w.set_xlim(np.percentile(tail_f275w[distribution_variable], 2.5),
                     np.percentile(tail_f275w[distribution_variable], 95))
-hist_f606w.set_xlim(np.percentile(tail_f606w[distribution_variable], 2.5),
-                    np.percentile(tail_f606w[distribution_variable], 95))
+hist_f606w.set_xlim(np.percentile(tail_f606w[distribution_variable][~np.isnan(tail_f606w[distribution_variable])], 2.5),
+                    np.percentile(tail_f606w[distribution_variable][~np.isnan(tail_f606w[distribution_variable])], 95))
 
 # box_halpha.annotate(r'$H\alpha$', fontsize=20, xy=(0.8, 0.9), xycoords='axes fraction')
 
@@ -120,10 +132,6 @@ hist_f606w.set_ylabel('')
 hist_halpha.set_xlabel('')
 hist_f275w.set_xlabel('')
 hist_f606w.set_xlabel('')
-
-# sns.despine(ax=box_halpha)
-# sns.despine(ax=box_f275w, left=True)
-# sns.despine(ax=box_f606w, left=True)
 
 box_halpha.set_ylabel('')
 box_f275w.set_ylabel('')
