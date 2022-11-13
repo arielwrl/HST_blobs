@@ -27,8 +27,8 @@ from toolbox.stat_tools import gini, find_maximum, find_pdf_peaks
 plt.ioff()
 
 detection = 'f275w'
-config = 'exp_logprior'
-run_flag = True
+config = 'dexp_logprior'
+run_flag = False
 
 pipes_dir = '/home/ariel/Workspace/GASP/HST/BAGPIPES/'
 data_dir = '/home/ariel/Workspace/GASP/HST/Data/'
@@ -93,7 +93,7 @@ if run_flag is False:
     output_catalog['n_Av_peaks'] = np.zeros((len(blob_catalog)))
     output_catalog['n_mwage_peaks'] = np.zeros((len(blob_catalog)))
 
-    if config in ['parametric', 'exp', 'exp_smalltau', 'exp_extrasamples', 'exp_logprior']:
+    if config in ['parametric', 'exp', 'exp_smalltau', 'exp_logprior', 'dexp_logprior']:
         output_catalog['tau'] = np.zeros(len(blob_catalog))
         output_catalog['eta'] = np.zeros(len(blob_catalog))
     if config == 'constant':
@@ -126,7 +126,7 @@ for blob_id in blob_catalog['fit_id']:
     pipes_blob = pipes.galaxy(blob_id, blob_catalog, load_data, filt_list=filter_files, spectrum_exists=False,
                               phot_units='ergscma')
 
-    if config in ['parametric', 'exp', 'exp_extrasamples']:
+    if config in ['parametric', 'exp']:
         exp = {}
         exp["age"] = (0.0, 0.5)
         exp["tau"] = (0.0, 5.)
@@ -140,7 +140,7 @@ for blob_id in blob_catalog['fit_id']:
         exp["massformed"] = (0., 10.)
         exp["metallicity"] = (0.005, 2.5)
 
-    elif config == 'exp_logprior':
+    elif config in ['exp_logprior', 'dexp_logprior']:
         exp = {}
         exp["age"] = (0.0, 0.5)
         exp["tau"] = (0.0000000000000000001, 0.5)
@@ -169,7 +169,7 @@ for blob_id in blob_catalog['fit_id']:
 
     dust["Av"] = (0, 1.25)
 
-    if config in ['parametric', 'constant', 'exp', 'exp_extrasamples', 'exp_logprior']:
+    if config in ['parametric', 'constant', 'exp', 'exp_logprior', 'dexp_logprior']:
         dust["eta"] = (1, 2.5)
 
     nebular = {}
@@ -178,9 +178,9 @@ for blob_id in blob_catalog['fit_id']:
     fit_instructions = {}
     fit_instructions["redshift"] = (blob_catalog['galaxy_redshift'][blob_index]-0.0001,
                                     blob_catalog['galaxy_redshift'][blob_index]+0.0001)
-    if config == 'parametric':
+    if config in ['parametric', 'dexp_logprior']:
         fit_instructions["delayed"] = exp
-    elif config in ['exp', 'exp_smalltau', 'exp_extrasamples', 'exp_logprior']:
+    elif config in ['exp', 'exp_smalltau', 'exp_logprior']:
         fit_instructions["exponential"] = exp
     elif config == 'ssp':
         fit_instructions["burst"] = burst
@@ -209,126 +209,115 @@ for blob_id in blob_catalog['fit_id']:
         #            np.array([ages, sfh_median, sfh_25, sfh_75]).transpose(),
         #            header='Age SFR SFR(25th percentile) SFR(75th percentile)')
         #
-        # parametric_plots(fit, blob_id, blob_index, blob_catalog, plot_dir + detection + '_' + config + '_tail')
+        parametric_plots(fit, blob_id, blob_index, blob_catalog, plot_dir + detection + '_' + config + '_tail')
 
-        fit.posterior.get_advanced_quantities()
-        output_catalog['galaxy'][blob_index] = blob_id.split('_')[0]
-
-        if config == 'parametric':
-            output_catalog['age'][blob_index] = np.median(fit.posterior.samples['delayed:age'])
-            output_catalog['age_std'][blob_index] = np.std(fit.posterior.samples['delayed:age'])
-            output_catalog['age_iqr'][blob_index] = np.percentile(fit.posterior.samples['delayed:age'], 75) \
-                                                    - np.percentile(fit.posterior.samples['delayed:age'], 25)
-            output_catalog['age_gini'][blob_index] = gini(fit.posterior.samples['delayed:age'])
-            output_catalog['tau'][blob_index] = np.median(fit.posterior.samples['delayed:tau'])
-            output_catalog['metallicity'][blob_index] = np.median(fit.posterior.samples['delayed:metallicity'])
-            output_catalog['formed_mass'][blob_index] = np.median(fit.posterior.samples['delayed:massformed'])
-            output_catalog['eta'][blob_index] = np.median(fit.posterior.samples['dust:eta'])
-
-        elif config in ['exp', 'exp_smalltau', 'exp_extrasamples', 'exp_logprior']:
-            output_catalog['age'][blob_index] = np.median(fit.posterior.samples['exponential:age'])
-            output_catalog['age_std'][blob_index] = np.std(fit.posterior.samples['exponential:age'])
-            output_catalog['age_iqr'][blob_index] = np.percentile(fit.posterior.samples['exponential:age'], 75) \
-                                                    - np.percentile(fit.posterior.samples['exponential:age'], 25)
-            output_catalog['age_gini'][blob_index] = gini(fit.posterior.samples['exponential:age'])
-            output_catalog['tau'][blob_index] = np.median(fit.posterior.samples['exponential:tau'])
-            output_catalog['metallicity'][blob_index] = np.median(fit.posterior.samples['exponential:metallicity'])
-            output_catalog['formed_mass'][blob_index] = np.median(fit.posterior.samples['exponential:massformed'])
-            output_catalog['eta'][blob_index] = np.median(fit.posterior.samples['dust:eta'])
-
-        elif config == 'ssp':
-            output_catalog['age'][blob_index] = np.median(fit.posterior.samples['burst:age'])
-            output_catalog['age_std'][blob_index] = np.std(fit.posterior.samples['burst:age'])
-            output_catalog['age_iqr'][blob_index] = np.percentile(fit.posterior.samples['burst:age'], 75) - np.percentile(fit.posterior.samples['burst:age'], 25)
-            output_catalog['age_gini'][blob_index] = gini(fit.posterior.samples['burst:age'])
-            output_catalog['metallicity'][blob_index] = np.median(fit.posterior.samples['burst:metallicity'])
-            output_catalog['formed_mass'][blob_index] = np.median(fit.posterior.samples['burst:massformed'])
-
-        elif config == 'constant':
-            output_catalog['age_min'][blob_index] = np.median(fit.posterior.samples['constant:age_min'])
-            output_catalog['age_min_std'][blob_index] = np.std(fit.posterior.samples['constant:age_min'])
-            output_catalog['age_min_iqr'][blob_index] = np.percentile(fit.posterior.samples['constant:age_min'], 75) \
-                                                        - np.percentile(fit.posterior.samples['constant:age_min'], 25)
-            output_catalog['age_min_gini'][blob_index] = gini(fit.posterior.samples['constant:age_min'])
-            output_catalog['age_max'][blob_index] = np.median(fit.posterior.samples['constant:age_max'])
-            output_catalog['age_max_std'][blob_index] = np.std(fit.posterior.samples['constant:age_max'])
-            output_catalog['age_max_iqr'][blob_index] = np.percentile(fit.posterior.samples['constant:age_max'], 75) \
-                                                        - np.percentile(fit.posterior.samples['constant:age_max'], 25)
-            output_catalog['age_max_gini'][blob_index] = gini(fit.posterior.samples['constant:age_max'])
-            output_catalog['metallicity'][blob_index] = np.median(fit.posterior.samples['constant:metallicity'])
-            output_catalog['formed_mass'][blob_index] = np.median(fit.posterior.samples['constant:massformed'])
-
-        output_catalog['Av'][blob_index] = np.median(fit.posterior.samples['dust:Av'])
-        output_catalog['sfr'][blob_index] = np.median(fit.posterior.samples['sfr'])
-        output_catalog['stellar_mass'][blob_index] = np.median(fit.posterior.samples['stellar_mass'])
-        output_catalog['stellar_mass_std'][blob_index] = np.std(fit.posterior.samples['stellar_mass'])
-        output_catalog['stellar_mass_iqr'][blob_index] = np.percentile(fit.posterior.samples['stellar_mass'], 75) - np.percentile(fit.posterior.samples['stellar_mass'], 25)
-        output_catalog['stellar_mass_gini'][blob_index] = gini(fit.posterior.samples['stellar_mass'])
-        output_catalog['mwage'][blob_index] = np.median(fit.posterior.samples['mass_weighted_age'])
-        output_catalog['mwage_std'][blob_index] = np.std(fit.posterior.samples['mass_weighted_age'])
-        output_catalog['mwage_iqr'][blob_index] = np.percentile(fit.posterior.samples['mass_weighted_age'], 75) - np.percentile(fit.posterior.samples['mass_weighted_age'], 25)
-        output_catalog['mwage_gini'][blob_index] = gini(fit.posterior.samples['mass_weighted_age'])
-        output_catalog['mwage_max'][blob_index] = find_maximum(fit.posterior.samples['mass_weighted_age'])
-        output_catalog['tform'][blob_index] = np.median(fit.posterior.samples['tform'])
-        output_catalog['photometry_syn'][blob_index] = np.median(fit.posterior.samples['photometry'], axis=0)
-        output_catalog['photometry_obs'][blob_index] = fit.galaxy.photometry[:, 1]
-        output_catalog['photometry_nebular'][blob_index] = [synflux(fit.posterior.model_galaxy.wavelengths,
-                                                                    fit.posterior.model_galaxy.nebular_spectrum_full,
-                                                                    filter_file) for filter_file in filter_files]
-        output_catalog['chi2'][blob_index] = np.min(fit.posterior.samples['chisq_phot'])
-        output_catalog['Ha'][blob_index] = fit.posterior.model_galaxy.line_fluxes['H  1  6562.81A']
-        output_catalog['Nii'][blob_index] = fit.posterior.model_galaxy.line_fluxes['N  2  6583.45A']
-        output_catalog['Oiii'][blob_index] = fit.posterior.model_galaxy.line_fluxes['O  3  5006.84A']
-        output_catalog['Hb'][blob_index] = fit.posterior.model_galaxy.line_fluxes['H  1  4861.33A']
-
-        if config == 'parametric':
-            age_peaks = find_pdf_peaks(fit.posterior.samples['delayed:age'], bandwidth=0.1)
-        elif config == 'ssp':
-            age_peaks = find_pdf_peaks(fit.posterior.samples['burst:age'], bandwidth=0.1)
-        elif config in ['exp', 'exp_smalltau', 'exp_extrasamples']:
-            age_peaks = find_pdf_peaks(fit.posterior.samples['exponential:age'], bandwidth=0.1)
-        elif config == 'constant':
-            age_peaks = find_pdf_peaks(fit.posterior.samples['constant:age_max'], bandwidth=0.1)
-        Av_peaks = find_pdf_peaks(fit.posterior.samples['dust:Av'], bandwidth=0.25)
-        mwage_peaks = find_pdf_peaks(fit.posterior.samples['mass_weighted_age'], bandwidth=0.1)
-
-        output_catalog['age_peaks'][blob_index] = np.append(age_peaks, np.zeros(15-len(age_peaks)))
-        output_catalog['Av_peaks'][blob_index] = np.append(Av_peaks, np.zeros(15-len(Av_peaks)))
-        output_catalog['mwage_peaks'][blob_index] = np.append(mwage_peaks, np.zeros(15-len(mwage_peaks)))
-        output_catalog['n_age_peaks'][blob_index] = len(age_peaks)
-        output_catalog['n_Av_peaks'][blob_index] = len(Av_peaks)
-        output_catalog['n_mwage_peaks'][blob_index] = len(mwage_peaks)
-
-        # for i in range(len(fit.posterior.samples['delayed:age'])):
-        #     all_runs_rows.append([blob_id.split('_')[0], blob_id, i, blob_id+str(i),
-        #                           len(fit.posterior.samples['delayed:age']),
-        #                           fit.posterior.samples['delayed:age'][i],
-        #                           fit.posterior.samples['delayed:tau'][i],
-        #                           fit.posterior.samples['delayed:metallicity'][i],
-        #                           fit.posterior.samples['delayed:massformed'][i],
-        #                           fit.posterior.samples['dust:Av'][i],
-        #                           fit.posterior.samples['dust:eta'][i],
-        #                           fit.posterior.samples['sfr'][i],
-        #                           fit.posterior.samples['stellar_mass'][i],
-        #                           fit.posterior.samples['mass_weighted_age'][i],
-        #                           fit.posterior.samples['tform'][i],
-        #                           fit.posterior.samples['chisq_phot'][i]])
-
-
-if run_flag is False:
-
-    if detection == 'optical_only':
-        output_catalog['match_id'] = [blob_catalog['blob_id'][i].split('_')[0] + '_' +
-                                      blob_catalog['blob_id'][i].split('_')[1] + '_f606w' for i in
-                                      range(len(blob_catalog))]
-
-    output_catalog.write(data_dir + 'tail_' + detection + '_' + config + '_bagpipes_results.fits', overwrite=True)
-
-    # all_runs_catalog = Table(rows=all_runs_rows, names=['galaxy', 'fit_id', 'run_index', 'run_id', 'n_samples', 'age',
-    #                                                     'tau', 'metallicity', 'massformed', 'Av', 'eta', 'sfr',
-    #                                                     'stellar_mass', 'mass_weighted_age', 'tform', 'chisq_phot'])
-    # all_runs_catalog.write(data_dir + 'tail_' + detection + '_' + config + '_bagpipes_results_samples.fits',
-    #                        overwrite=True)
+#         fit.posterior.get_advanced_quantities()
+#         output_catalog['galaxy'][blob_index] = blob_id.split('_')[0]
+#
+#         if config in ['parametric', 'dexp_logprior', 'exp', 'exp_smalltau', 'exp_logprior']:
+#             output_catalog['age'][blob_index] = np.median(fit.posterior.samples['delayed:age'])
+#             output_catalog['age_std'][blob_index] = np.std(fit.posterior.samples['delayed:age'])
+#             output_catalog['age_iqr'][blob_index] = np.percentile(fit.posterior.samples['delayed:age'], 75) \
+#                                                     - np.percentile(fit.posterior.samples['delayed:age'], 25)
+#             output_catalog['age_gini'][blob_index] = gini(fit.posterior.samples['delayed:age'])
+#             output_catalog['tau'][blob_index] = np.median(fit.posterior.samples['delayed:tau'])
+#             output_catalog['metallicity'][blob_index] = np.median(fit.posterior.samples['delayed:metallicity'])
+#             output_catalog['formed_mass'][blob_index] = np.median(fit.posterior.samples['delayed:massformed'])
+#             output_catalog['eta'][blob_index] = np.median(fit.posterior.samples['dust:eta'])
+#
+#         elif config == 'ssp':
+#             output_catalog['age'][blob_index] = np.median(fit.posterior.samples['burst:age'])
+#             output_catalog['age_std'][blob_index] = np.std(fit.posterior.samples['burst:age'])
+#             output_catalog['age_iqr'][blob_index] = np.percentile(fit.posterior.samples['burst:age'], 75) - np.percentile(fit.posterior.samples['burst:age'], 25)
+#             output_catalog['age_gini'][blob_index] = gini(fit.posterior.samples['burst:age'])
+#             output_catalog['metallicity'][blob_index] = np.median(fit.posterior.samples['burst:metallicity'])
+#             output_catalog['formed_mass'][blob_index] = np.median(fit.posterior.samples['burst:massformed'])
+#
+#         elif config == 'constant':
+#             output_catalog['age_min'][blob_index] = np.median(fit.posterior.samples['constant:age_min'])
+#             output_catalog['age_min_std'][blob_index] = np.std(fit.posterior.samples['constant:age_min'])
+#             output_catalog['age_min_iqr'][blob_index] = np.percentile(fit.posterior.samples['constant:age_min'], 75) \
+#                                                         - np.percentile(fit.posterior.samples['constant:age_min'], 25)
+#             output_catalog['age_min_gini'][blob_index] = gini(fit.posterior.samples['constant:age_min'])
+#             output_catalog['age_max'][blob_index] = np.median(fit.posterior.samples['constant:age_max'])
+#             output_catalog['age_max_std'][blob_index] = np.std(fit.posterior.samples['constant:age_max'])
+#             output_catalog['age_max_iqr'][blob_index] = np.percentile(fit.posterior.samples['constant:age_max'], 75) \
+#                                                         - np.percentile(fit.posterior.samples['constant:age_max'], 25)
+#             output_catalog['age_max_gini'][blob_index] = gini(fit.posterior.samples['constant:age_max'])
+#             output_catalog['metallicity'][blob_index] = np.median(fit.posterior.samples['constant:metallicity'])
+#             output_catalog['formed_mass'][blob_index] = np.median(fit.posterior.samples['constant:massformed'])
+#
+#         output_catalog['Av'][blob_index] = np.median(fit.posterior.samples['dust:Av'])
+#         output_catalog['sfr'][blob_index] = np.median(fit.posterior.samples['sfr'])
+#         output_catalog['stellar_mass'][blob_index] = np.median(fit.posterior.samples['stellar_mass'])
+#         output_catalog['stellar_mass_std'][blob_index] = np.std(fit.posterior.samples['stellar_mass'])
+#         output_catalog['stellar_mass_iqr'][blob_index] = np.percentile(fit.posterior.samples['stellar_mass'], 75) - np.percentile(fit.posterior.samples['stellar_mass'], 25)
+#         output_catalog['stellar_mass_gini'][blob_index] = gini(fit.posterior.samples['stellar_mass'])
+#         output_catalog['mwage'][blob_index] = np.median(fit.posterior.samples['mass_weighted_age'])
+#         output_catalog['mwage_std'][blob_index] = np.std(fit.posterior.samples['mass_weighted_age'])
+#         output_catalog['mwage_iqr'][blob_index] = np.percentile(fit.posterior.samples['mass_weighted_age'], 75) - np.percentile(fit.posterior.samples['mass_weighted_age'], 25)
+#         output_catalog['mwage_gini'][blob_index] = gini(fit.posterior.samples['mass_weighted_age'])
+#         output_catalog['mwage_max'][blob_index] = find_maximum(fit.posterior.samples['mass_weighted_age'])
+#         output_catalog['tform'][blob_index] = np.median(fit.posterior.samples['tform'])
+#         output_catalog['photometry_syn'][blob_index] = np.median(fit.posterior.samples['photometry'], axis=0)
+#         output_catalog['photometry_obs'][blob_index] = fit.galaxy.photometry[:, 1]
+#         output_catalog['photometry_nebular'][blob_index] = [synflux(fit.posterior.model_galaxy.wavelengths,
+#                                                                     fit.posterior.model_galaxy.nebular_spectrum_full,
+#                                                                     filter_file) for filter_file in filter_files]
+#         output_catalog['chi2'][blob_index] = np.min(fit.posterior.samples['chisq_phot'])
+#         output_catalog['Ha'][blob_index] = fit.posterior.model_galaxy.line_fluxes['H  1  6562.81A']
+#         output_catalog['Nii'][blob_index] = fit.posterior.model_galaxy.line_fluxes['N  2  6583.45A']
+#         output_catalog['Oiii'][blob_index] = fit.posterior.model_galaxy.line_fluxes['O  3  5006.84A']
+#         output_catalog['Hb'][blob_index] = fit.posterior.model_galaxy.line_fluxes['H  1  4861.33A']
+#
+#         if config in ['parametric', 'dexp_logprior']:
+#             age_peaks = find_pdf_peaks(fit.posterior.samples['delayed:age'], bandwidth=0.1)
+#         elif config == 'ssp':
+#             age_peaks = find_pdf_peaks(fit.posterior.samples['burst:age'], bandwidth=0.1)
+#         elif config in ['exp', 'exp_smalltau', 'exp_logprior']:
+#             age_peaks = find_pdf_peaks(fit.posterior.samples['exponential:age'], bandwidth=0.1)
+#         elif config == 'constant':
+#             age_peaks = find_pdf_peaks(fit.posterior.samples['constant:age_max'], bandwidth=0.1)
+#         Av_peaks = find_pdf_peaks(fit.posterior.samples['dust:Av'], bandwidth=0.25)
+#         mwage_peaks = find_pdf_peaks(fit.posterior.samples['mass_weighted_age'], bandwidth=0.1)
+#
+#         output_catalog['age_peaks'][blob_index] = np.append(age_peaks, np.zeros(15-len(age_peaks)))
+#         output_catalog['Av_peaks'][blob_index] = np.append(Av_peaks, np.zeros(15-len(Av_peaks)))
+#         output_catalog['mwage_peaks'][blob_index] = np.append(mwage_peaks, np.zeros(15-len(mwage_peaks)))
+#         output_catalog['n_age_peaks'][blob_index] = len(age_peaks)
+#         output_catalog['n_Av_peaks'][blob_index] = len(Av_peaks)
+#         output_catalog['n_mwage_peaks'][blob_index] = len(mwage_peaks)
+#
+#         # for i in range(len(fit.posterior.samples['delayed:age'])):
+#         #     all_runs_rows.append([blob_id.split('_')[0], blob_id, i, blob_id+str(i),
+#         #                           len(fit.posterior.samples['delayed:age']),
+#         #                           fit.posterior.samples['delayed:age'][i],
+#         #                           fit.posterior.samples['delayed:tau'][i],
+#         #                           fit.posterior.samples['delayed:metallicity'][i],
+#         #                           fit.posterior.samples['delayed:massformed'][i],
+#         #                           fit.posterior.samples['dust:Av'][i],
+#         #                           fit.posterior.samples['dust:eta'][i],
+#         #                           fit.posterior.samples['sfr'][i],
+#         #                           fit.posterior.samples['stellar_mass'][i],
+#         #                           fit.posterior.samples['mass_weighted_age'][i],
+#         #                           fit.posterior.samples['tform'][i],
+#         #                           fit.posterior.samples['chisq_phot'][i]])
+#
+#
+# if run_flag is False:
+#
+#     if detection == 'optical_only':
+#         output_catalog['match_id'] = [blob_catalog['blob_id'][i].split('_')[0] + '_' +
+#                                       blob_catalog['blob_id'][i].split('_')[1] + '_f606w' for i in
+#                                       range(len(blob_catalog))]
+#
+#     output_catalog.write(data_dir + 'tail_' + detection + '_' + config + '_bagpipes_results.fits', overwrite=True)
+#
+#     # all_runs_catalog = Table(rows=all_runs_rows, names=['galaxy', 'fit_id', 'run_index', 'run_id', 'n_samples', 'age',
+#     #                                                     'tau', 'metallicity', 'massformed', 'Av', 'eta', 'sfr',
+#     #                                                     'stellar_mass', 'mass_weighted_age', 'tform', 'chisq_phot'])
+#     # all_runs_catalog.write(data_dir + 'tail_' + detection + '_' + config + '_bagpipes_results_samples.fits',
+#     #                        overwrite=True)
 
 
 
