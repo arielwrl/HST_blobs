@@ -26,5 +26,5 @@ for i in range(35):
 zeros_grid = fits.HDUList(hdu_list)
 
 zeros_grid.writeto('/home/ariel/.local/lib/python3.8/site-packages/bagpipes/models/grids/'
-                   'hacked_no_cont_bc03_miles_nebular_cont_grids.fits')
+                   'bc03_miles_nebular_cont_grids_hacked.fits')
 
