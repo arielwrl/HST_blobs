@@ -19,6 +19,10 @@ from astropy.table import Table
 from hst_pipeutils import plot_example
 from toolbox import plot_tools
 
+halpha_palette = sns.light_palette('goldenrod', 4)
+f275w_palette = sns.light_palette('mediumvioletred', 4)
+f606w_palette = sns.light_palette('indigo', 4)
+
 sns.set_style('ticks')
 
 halpha_input = Table.read('/home/ariel/Workspace/GASP/HST/Data/halpha_bagpipes_input.fits')
@@ -42,7 +46,7 @@ image = fits.open(image_dir + 'JO201_f606w_0.04px_drc_subreg_MWdc.fits')
 wcs = WCS(image[1].header)
 image = image[1].data
 
-fig = plt.figure(figsize=(16.25, 8))
+fig = plt.figure(figsize=(15, 8))
 
 gs = gridspec.GridSpec(3, 4)
 
@@ -68,7 +72,7 @@ ax_image.set_ylabel('$Dec\,\mathrm{[\prime\prime]}$', fontsize=20)
 
 plot_example(halpha_id, halpha_input, ax=ax_halpha, plot_distributions=True, spec_color='goldenrod', phot_color='goldenrod')
 plot_example(uv_id, uv_input, ax=ax_f275w, plot_distributions=True, spec_color='mediumvioletred', phot_color='mediumvioletred')
-plot_example(complex_id, complexes_input, ax=ax_f606w, plot_distributions=True, spec_color='indigo', phot_color='indigo')
+plot_example(complex_id, complexes_input, ax=ax_f606w, plot_distributions=True, spec_color='indigo', phot_color=f606w_palette[2])
 
 ax_halpha.set_xlabel('')
 ax_halpha.set_ylabel('')
@@ -92,7 +96,7 @@ sns.despine(ax=ax_f606w)
 
 fig.subplots_adjust(top=0.975,
                     bottom=0.09,
-                    left=0.085,
+                    left=0.09,
                     right=0.995,
                     hspace=0.025,
                     wspace=0.24)

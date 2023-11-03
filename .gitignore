@@ -7,3 +7,10 @@
 *.points
 *.dat
 *.h5
+*.spec
+.idea
+*.tar.gz
+*.xml
+*.jpg
+Paper comments
+Submission

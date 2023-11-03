@@ -15,19 +15,20 @@ from astropy.table import Table
 from starlight_toolkit.synphot import synflux
 from hst_pipeutils import load_data, parametric_plots
 from toolbox.stat_tools import gini, find_maximum, find_pdf_peaks
+import pickle
 
 plt.ioff()
 
-detection = 'optical_only'
-config = 'dexp_logprior_single'
-run_flag = True
+detection = 'halpha'
+config = 'dexp_logprior_double'
+run_flag = False
 
 pipes_dir = '/home/ariel/Workspace/GASP/HST/BAGPIPES/'
 data_dir = '/home/ariel/Workspace/GASP/HST/Data/'
 
 clump_catalog = Table.read(data_dir+detection+'_bagpipes_input.fits')
+clump_catalog = clump_catalog[clump_catalog['disk']]
 clump_catalog['fit_id'] = [clump_catalog['clump_id'][i] + '_' + config for i in range(len(clump_catalog))]
-# clump_catalog = clump_catalog[(~clump_catalog['disk']) & ((clump_catalog['level'] == 0) | (clump_catalog['leaf_flag'] == 1))]
 
 filter_files = [data_dir + 'filters/HST_WFC3_UVIS2.F275W.dat',
                 data_dir + 'filters/HST_WFC3_UVIS2.F336W.dat',
@@ -36,6 +37,8 @@ filter_files = [data_dir + 'filters/HST_WFC3_UVIS2.F275W.dat',
                 data_dir + 'filters/HST_WFC3_UVIS2.F814W.dat']
 
 if run_flag is False:
+    sfh_catalog = {}
+
     output_catalog = Table()
     output_catalog['clump_id'] = clump_catalog['clump_id']
     output_catalog['fit_id'] = clump_catalog['fit_id']
@@ -84,6 +87,7 @@ if run_flag is False:
     output_catalog['isfr'] = np.zeros(len(clump_catalog))
     output_catalog['max_sfr'] = np.zeros(len(clump_catalog))
     output_catalog['t_max_sfr'] = np.zeros(len(clump_catalog))
+    output_catalog['mass_frac_20'] = np.zeros(len(clump_catalog))
     output_catalog['stellar_mass'] = np.zeros(len(clump_catalog))
     output_catalog['stellar_mass_std'] = np.zeros(len(clump_catalog))
     output_catalog['stellar_mass_iqr'] = np.zeros(len(clump_catalog))
@@ -96,11 +100,12 @@ if run_flag is False:
     output_catalog['tform'] = np.zeros(len(clump_catalog))
     output_catalog['photometry_syn'] = np.zeros((len(clump_catalog), 5))
     output_catalog['photometry_syn_iqr'] = np.zeros((len(clump_catalog), 5))
+    output_catalog['photometry_syn_50'] = np.zeros((len(clump_catalog), 5))
+    output_catalog['photometry_syn_25'] = np.zeros((len(clump_catalog), 5))
+    output_catalog['photometry_syn_75'] = np.zeros((len(clump_catalog), 5))
     output_catalog['photometry_obs'] = np.zeros((len(clump_catalog), 5))
-    # output_catalog['photometry_nebular'] = np.zeros((len(clump_catalog), 5))
     output_catalog['chi2'] = np.zeros(len(clump_catalog))
     output_catalog['Ha'] = np.zeros(len(clump_catalog))
-    output_catalog['Nii'] = np.zeros(len(clump_catalog))
     output_catalog['Nii_6583'] = np.zeros(len(clump_catalog))
     output_catalog['Nii_6548'] = np.zeros(len(clump_catalog))
     output_catalog['Oiii'] = np.zeros(len(clump_catalog))
@@ -251,9 +256,12 @@ for clump_id in clump_catalog['fit_id']:
 
         sfh = np.median(fit.posterior.samples['sfh'], axis=0)
         ages = fit.posterior.sfh.ages
+        age_widths = fit.posterior.sfh.age_widths
         output_catalog['isfr'][clump_index] = sfh[0]
         output_catalog['max_sfr'][clump_index] = np.max(sfh)
         output_catalog['t_max_sfr'][clump_index] = ages[np.argmax(sfh)]
+
+        output_catalog['mass_frac_20'][clump_index] = np.sum(sfh[ages < 20e6] * age_widths[ages < 20e6])/np.sum(sfh * age_widths)
 
         output_catalog['stellar_mass'][clump_index] = np.median(fit.posterior.samples['stellar_mass'])
         output_catalog['stellar_mass_std'][clump_index] = np.std(fit.posterior.samples['stellar_mass'])
@@ -266,11 +274,11 @@ for clump_id in clump_catalog['fit_id']:
         output_catalog['mwage_max'][clump_index] = find_maximum(fit.posterior.samples['mass_weighted_age'])
         output_catalog['tform'][clump_index] = np.median(fit.posterior.samples['tform'])
         output_catalog['photometry_syn'][clump_index] = np.median(fit.posterior.samples['photometry'], axis=0)
+        output_catalog['photometry_syn_50'][clump_index] = np.percentile(fit.posterior.samples['photometry'], 50, axis=0)
+        output_catalog['photometry_syn_25'][clump_index] = np.percentile(fit.posterior.samples['photometry'], 25, axis=0)
+        output_catalog['photometry_syn_75'][clump_index] = np.percentile(fit.posterior.samples['photometry'], 75, axis=0)
         output_catalog['photometry_syn_iqr'][clump_index] = np.percentile(fit.posterior.samples['photometry'], 75, axis=0) - np.percentile(fit.posterior.samples['photometry'], 25, axis=0)
         output_catalog['photometry_obs'][clump_index] = fit.galaxy.photometry[:, 1]
-        # output_catalog['photometry_nebular'][clump_index] = [synflux(fit.posterior.model_galaxy.wavelengths,
-        #                                                             fit.posterior.model_galaxy.nebular_spectrum_full,
-        #                                                             filter_file) for filter_file in filter_files]
         output_catalog['chi2'][clump_index] = np.min(fit.posterior.samples['chisq_phot'])
         output_catalog['Ha'][clump_index] = fit.posterior.model_galaxy.line_fluxes['H  1  6562.81A']
         output_catalog['Nii_6583'][clump_index] = fit.posterior.model_galaxy.line_fluxes['N  2  6583.45A']
@@ -278,14 +286,19 @@ for clump_id in clump_catalog['fit_id']:
         output_catalog['Oiii'][clump_index] = fit.posterior.model_galaxy.line_fluxes['O  3  5006.84A']
         output_catalog['Hb'][clump_index] = fit.posterior.model_galaxy.line_fluxes['H  1  4861.33A']
 
+        sfh_catalog[output_catalog['clump_id']]: sfh
+
 if run_flag is False:
+
+    sfh_catalog['ages']: ages
+    sfh_catalog['age_widths']: age_widths
+
+    pickle.dump(sfh_catalog, open(data_dir+'sfh/' + detection + '_' + config + '_sfh.pkl', 'wb'))
 
     if detection == 'optical_only':
         output_catalog['match_id'] = [clump_catalog['clump_id'][i].split('_')[0] + '_' +
                                       clump_catalog['clump_id'][i].split('_')[1] + '_f606w' for i in
                                       range(len(clump_catalog))]
-
-    # output_catalog = output_catalog[output_catalog['mwage'] > 0]
 
     output_catalog.write(data_dir + detection + '_' + config + '_bagpipes_results.fits', overwrite=True)
 

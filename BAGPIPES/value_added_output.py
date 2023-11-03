@@ -10,13 +10,14 @@ Includes properties of parent and sibling clumps in the output tables, flags out
 import numpy as np
 from astropy.table import Table
 
-detection = 'halpha'
+detection = 'f606w'
 config = 'dexp_logprior_single'
 
 data_dir = '/home/ariel/Workspace/GASP/HST/Data/'
 
 input_table = Table.read(data_dir + detection + '_bagpipes_input.fits')
 output_table = Table.read(data_dir + detection + '_' + config + '_bagpipes_results.fits')
+classes_table = Table.read(data_dir + detection + '_classes.fits')
 complex_input = Table.read(data_dir + 'f606w_bagpipes_input.fits')
 complex_output = Table.read(data_dir + 'f606w_dexp_logprior_single_bagpipes_results.fits')
 optical_only_output = Table.read(data_dir + 'optical_only_dexp_logprior_single_bagpipes_results.fits')
@@ -43,16 +44,34 @@ for i in range(len(output_table)):
     output_table['photometry_errors'][i] = np.array([2 * input_table['err' + filter_name][i] for filter_name in filter_list])
 
 output_table['residuals'] = (output_table['photometry_obs']-output_table['photometry_syn'])/output_table['photometry_errors']
-output_table['residuals_within_iqr'] = (output_table['photometry_obs']-output_table['photometry_syn'])/(output_table['photometry_errors'] + output_table['photometry_syn_iqr'])
 output_table['absolute_residuals'] = np.absolute(output_table['residuals'])
+
+output_table['residuals_within_iqr'] = np.empty_like(output_table['residuals'])
+for i in range(len(output_table)):
+    for j in range(5):
+        if output_table['photometry_obs'][i, j] > output_table['photometry_syn_50'][i, j]:
+            output_table['residuals_within_iqr'][i, j] = ((output_table['photometry_obs'][i, j] -
+                                                          output_table['photometry_syn_50'][i, j]) /
+                                                          ((output_table['photometry_syn_75'][i, j] -
+                                                            output_table['photometry_syn_50'][i, j]) +
+                                                           output_table['photometry_errors'][i, j]))
+        elif output_table['photometry_obs'][i, j] < output_table['photometry_syn_50'][i, j]:
+            output_table['residuals_within_iqr'][i, j] = ((output_table['photometry_syn_50'][i, j] -
+                                                           output_table['photometry_obs'][i, j]) /
+                                                          ((output_table['photometry_syn_50'][i, j] -
+                                                            output_table['photometry_syn_25'][i, j]) +
+                                                           output_table['photometry_errors'][i, j]))
+        else:
+            print('This got weird')
+
 output_table['absolute_residuals_within_iqr'] = np.absolute(output_table['residuals_within_iqr'])
 
 output_table['n_bad_points'] = np.zeros(len(output_table))
 output_table['n_bad_points_within_iqr'] = np.zeros(len(output_table))
 
 for i in range(len(output_table)):
-    output_table['n_bad_points'][i] = (output_table['residuals'][i] > 1).sum()
-    output_table['n_bad_points_within_iqr'][i] = (output_table['residuals_within_iqr'][i] > 1).sum()
+    output_table['n_bad_points'][i] = (output_table['absolute_residuals'][i] > 1).sum()
+    output_table['n_bad_points_within_iqr'][i] = (output_table['absolute_residuals_within_iqr'][i] > 1).sum()
 
 output_table['outside_errorbar'] = output_table['absolute_residuals'] > 1
 output_table['outside_errorbar_soft'] = output_table['absolute_residuals_within_iqr'] > 1
@@ -61,12 +80,13 @@ output_table['bad_fit_npoints'] = output_table['n_bad_points'] > 1
 output_table['bad_fit_within_iqr'] = output_table['n_bad_points_within_iqr'] > 0
 output_table['bad_fit'] = output_table['bad_fit_npoints'] | output_table['bad_fit_within_iqr']
 
-if detection != 'f606w':
+if (detection != 'f606w') & (detection != 'optical_only'):
     output_table['parent_id'] = input_table['parent_id']
     output_table['match_flag_output'] = np.ones_like(output_table['mwage'], dtype=bool)
     output_table['match_flag_output_optical_only'] = np.ones_like(output_table['mwage'], dtype=bool)
 
     output_table['parent_mwage'] = np.zeros_like(output_table['mwage'])
+    output_table['parent_mwage_iqr'] = np.zeros_like(output_table['mwage'])
     output_table['parent_stellar_mass'] = np.zeros_like(output_table['mwage'])
     output_table['parent_age'] = np.zeros_like(output_table['mwage'])
     output_table['parent_sfr'] = np.zeros_like(output_table['mwage'])
@@ -94,6 +114,7 @@ if detection != 'f606w':
             match_index = np.argwhere(complex_output['clump_id'] == input_table['parent_id'][i]).ravel()[0]
 
             output_table['parent_mwage'][i] = complex_output['mwage'][match_index]
+            output_table['parent_mwage_iqr'][i] = complex_output['mwage_iqr'][match_index]
             output_table['parent_stellar_mass'][i] = complex_output['stellar_mass'][match_index]
             output_table['parent_age'][i] = complex_output['age'][match_index]
             output_table['parent_sfr'][i] = complex_output['sfr'][match_index]
@@ -120,7 +141,7 @@ if detection != 'f606w':
             match_index = np.argwhere(optical_only_transformed_ids == input_table['parent_id'][i]).ravel()[0]
 
             output_table['parent_mwage_optical_only'][i] = optical_only_output['mwage'][match_index]
-            output_table['parent_stellar_mass_optical_only'][i] = optical_only_output['mwage'][match_index]
+            output_table['parent_stellar_mass_optical_only'][i] = optical_only_output['stellar_mass'][match_index]
             output_table['parent_age_optical_only'][i] = optical_only_output['age'][match_index]
             output_table['parent_age_std_optical_only'][i] = optical_only_output['age_std'][match_index]
             output_table['parent_tau_optical_only'][i] = optical_only_output['tau'][match_index]
@@ -166,8 +187,6 @@ if detection != 'f606w':
     for i in range(len(output_table)):
         if output_table['min_siblings_mwage'][i] == output_table['mwage'][i]:
             output_table['youngest_sibling'][i] = True
-
-
 
     # F275W match
 
@@ -226,5 +245,12 @@ if detection != 'f606w':
     if config.split('_')[-1] == 'single':
         double_output = Table.read(data_dir + detection + '_dexp_logprior_double_bagpipes_results.fits')
         output_table['bad_double_fit'] = double_output['mass_ratio'] > 2
+
+output_table['sigma_m'] = np.log10((10**output_table['stellar_mass'])/input_table['area_exact'])
+output_table['sigma_sfr'] = np.log10(output_table['sfr']/input_table['area_exact'])
+
+output_table['early_decliner'] = classes_table['early_decliner']
+output_table['late_decliner'] = classes_table['late_decliner']
+output_table['intermediate'] = classes_table['intermediate']
 
 output_table.write(data_dir + detection + '_' + config + '_bagpipes_results.fits', overwrite=True)

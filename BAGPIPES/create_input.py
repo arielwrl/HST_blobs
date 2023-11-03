@@ -17,7 +17,7 @@ from scipy.spatial.distance import cdist
 
 plt.ioff()
 
-detection = 'f275w'
+detection = 'halpha'
 data_dir = '/home/ariel/Workspace/GASP/HST/Data/'
 catalog_dir = '/home/ariel/Workspace/GASP/HST/Data/eric_catalogs/'
 
@@ -31,14 +31,19 @@ redshift_dict = {'JO201': 0.044631,
 if detection == 'f606w':
     clump_catalog = Table.read(catalog_dir + 'HST_' + detection + '_0.04px_reg_mask_denoised_disk275_masked_3sigma_'
                                '0delta_only_trunks_matched_quantities.csv', format='ascii.ecsv')
-    clump_catalog = clump_catalog[clump_catalog['tail_gal_flag'] == 0]
-    # _all_gals_sel_morphology
+
+    optical_catalog = Table.read(catalog_dir + 'HST_f606w_0.04px_reg_mask_denoised_disk275_masked_3sigma_0delta_only_'
+                                 'trunks_match_optical_only_sel.csv', format='ascii.ecsv')
+
+    clump_catalog['f_optical_only'] = optical_catalog['area_exact']/clump_catalog['area_exact']
+
 elif detection == 'optical_only':
     clump_catalog = Table.read(catalog_dir + 'HST_f606w_0.04px_reg_mask_denoised_disk275_masked_3sigma_0delta_only_'
                                'trunks_match_optical_only_sel.csv', format='ascii.ecsv')
-    clump_catalog = clump_catalog[clump_catalog['tail_gal_flag'] == 0]
+
 elif detection == 'bad_beta':
     clump_catalog = Table.read(catalog_dir + '1pix_dilation_fluxes.csv')
+
 else:
     clump_catalog = Table.read(catalog_dir + 'HST_' + detection + '_0.04px_reg_mask_SNR2_clumps_2.5sigma_5delta_'
                                'denoise_2sigma_0delta_all_gals_z_BPT_sel_morphology.csv', format='ascii.ecsv')
@@ -110,6 +115,7 @@ if (detection == 'halpha') | (detection == 'f275w'):
     clump_catalog['parent_f_opt'] = np.zeros(len(clump_catalog))
     clump_catalog['displacement_deg'] = np.zeros(len(clump_catalog))
     clump_catalog['displacement_kpc'] = np.zeros(len(clump_catalog))
+    clump_catalog['parent_area_optical_only'] = np.zeros(len(clump_catalog))
     clump_catalog['displacement_deg_optical_only'] = np.zeros(len(clump_catalog))
     clump_catalog['displacement_kpc_optical_only'] = np.zeros(len(clump_catalog))
 
@@ -162,6 +168,8 @@ if (detection == 'halpha') | (detection == 'f275w'):
             clump_catalog['displacement_deg_optical_only'][i] = displacement_deg_optical_only
             clump_catalog['displacement_kpc_optical_only'][i] = displacement_kpc_optical_only
 
+            clump_catalog['parent_area_optical_only'][i] = parent_input_optical_only['area_exact'][parent_catalog_index_optical_only]
+
             clump_catalog['parent_f_opt'][i] = parent_input_optical_only['area_exact'][parent_catalog_index_optical_only]\
                                                /parent_input['area_exact'][parent_catalog_index]
 
@@ -200,6 +208,10 @@ for galaxy in ['JO201', 'JO204', 'JO206', 'JW100', 'JW39', 'JO175']:
 clump_catalog['dist_to_disk_kpc'] = np.array([clump_catalog['dist_to_disk_deg'][i] *
                                              degtokpc(clump_catalog['galaxy_redshift'][i]) for i in
                                              range(len(clump_catalog))])
+
+bad_clumps = ((clump_catalog['clump_id'].astype(str) == 'JO175_126_f606w') |
+              (clump_catalog['clump_id'].astype(str) == 'JO175_950_f606w'))
+clump_catalog = clump_catalog[~bad_clumps]
 
 if detection == 'optical_only':
     clump_catalog = clump_catalog[clump_catalog['F606W'] != 0]

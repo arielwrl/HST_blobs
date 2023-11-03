@@ -1,0 +1,3 @@
+These are the old BAGPIPES and data directories 
+
+The data is divided between disk and tail, tail is fit as a single component and disk as double component. The current update changes this, fitting everything with single and double component model, and then selecting the corresponding model into the final output table.

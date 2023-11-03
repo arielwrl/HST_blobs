@@ -18,7 +18,6 @@ from toolbox import plot_tools
 sns.set_style('ticks')
 
 distribution_variable = 'mwage'
-selection = 'tail'
 
 mass_dict = {'JO201': 44194800000,
              'JO204': 54968402000,
@@ -32,19 +31,17 @@ halpha_input = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_halpha_bagpi
 f275w_input = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_f275w_bagpipes_input.fits')
 f606w_input = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_f606w_bagpipes_input.fits')
 
-tail_halpha = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_halpha_parametric_bagpipes_results.fits')
-tail_f275w = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_f275w_parametric_bagpipes_results.fits')
-tail_f606w = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_f606w_parametric_bagpipes_results.fits')
+halpha_input = halpha_input[(halpha_input['sel_flag'] == 31)]
+f275w_input = f275w_input[(f275w_input['sel_flag'] == 31)]
+f606w_input = f606w_input[(f606w_input['sel_flag'] == 31)]
 
-if selection == 'tail':
-    tail_halpha = tail_halpha[(halpha_input['sel_flag'] == 31) & (halpha_input['tail_gal_flag'] == 0)]
-    tail_f275w = tail_f275w[(f275w_input['sel_flag'] == 31) & (f275w_input['tail_gal_flag'] == 0)]
-    tail_f606w = tail_f606w[(f606w_input['sel_flag'] == 31) & (f606w_input['tail_gal_flag'] == 0)]
+tail_halpha = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_halpha_dexp_logprior_bagpipes_results.fits')
+tail_f275w = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_f275w_dexp_logprior_bagpipes_results.fits')
+tail_f606w = Table.read('/home/ariel/Workspace/GASP/HST/Data/tail_f606w_dexp_logprior_bagpipes_results.fits')
 
-if selection == 'extraplanar':
-    tail_halpha = tail_halpha[(halpha_input['sel_flag'] == 31) & (halpha_input['tail_gal_flag'] == 1)]
-    tail_f275w = tail_f275w[(f275w_input['sel_flag'] == 31) & (f275w_input['tail_gal_flag'] == 1)]
-    tail_f606w = tail_f606w[(f606w_input['sel_flag'] == 31) & (f606w_input['tail_gal_flag'] == 1)]
+tail_halpha = tail_halpha[(halpha_input['sel_flag'] == 31) & (halpha_input['tail_gal_flag'] == 0)]
+tail_f275w = tail_f275w[(f275w_input['sel_flag'] == 31) & (f275w_input['tail_gal_flag'] == 0)]
+tail_f606w = tail_f606w[(f606w_input['sel_flag'] == 31) & (f606w_input['tail_gal_flag'] == 0)]
 
 tail_halpha['galaxy'] = tail_halpha['galaxy'].astype(str)
 tail_f275w['galaxy'] = tail_f275w['galaxy'].astype(str)
@@ -70,10 +67,6 @@ tail_halpha['mass'] = tail_halpha['stellar_mass']
 tail_f275w['mass'] = tail_f275w['stellar_mass']
 tail_f606w['mass'] = tail_f606w['stellar_mass']
 
-tail_halpha['sfr'] = np.log10(tail_halpha['sfr'])
-tail_f275w['sfr'] = np.log10(tail_f275w['sfr'])
-tail_f606w['sfr'] = np.log10(tail_f606w['sfr'])
-
 halpha_df = tail_halpha['galaxy', 'blob_id', 'age', 'tau', 'mwage', 'mass', 'galaxy_mass', 'sfr', 'Av'].to_pandas()
 f275w_df = tail_f275w['galaxy', 'blob_id', 'age', 'tau', 'mwage', 'mass', 'galaxy_mass', 'sfr', 'Av'].to_pandas()
 f606w_df = tail_f606w['galaxy', 'blob_id', 'age', 'tau', 'mwage', 'mass', 'galaxy_mass', 'sfr', 'Av'].to_pandas()
@@ -82,7 +75,7 @@ halpha_df.sort_values(by='galaxy_mass', inplace=True)
 f275w_df.sort_values(by='galaxy_mass', inplace=True)
 f606w_df.sort_values(by='galaxy_mass', inplace=True)
 
-if selection == 'tail':
+
 fig, ax = plt.subplots(1, 3, figsize=(10, 6.5), sharey=True)
 
 box_halpha = ax[0]
@@ -114,8 +107,6 @@ hist_f275w.set_xlim(np.percentile(tail_f275w[distribution_variable], 2.5),
                     np.percentile(tail_f275w[distribution_variable], 95))
 hist_f606w.set_xlim(np.percentile(tail_f606w[distribution_variable][~np.isnan(tail_f606w[distribution_variable])], 2.5),
                     np.percentile(tail_f606w[distribution_variable][~np.isnan(tail_f606w[distribution_variable])], 95))
-
-# box_halpha.annotate(r'$H\alpha$', fontsize=20, xy=(0.8, 0.9), xycoords='axes fraction')
 
 sns.despine(ax=hist_halpha, left=True, bottom=True)
 sns.despine(ax=hist_f275w, left=True, bottom=True)

@@ -37,7 +37,7 @@ output_table = Table.read('/home/ariel/Workspace/GASP/HST/Data/f606w_dexp_logpri
 input_table = Table.read('/home/ariel/Workspace/GASP/HST/Data/f606w_bagpipes_input.fits')
 input_table['fit_id'] = [input_table['clump_id'][i] + '_' + 'dexp_logprior_single' for i in range(len(input_table))]
 
-time_steps = np.arange(0, 3.3, 0.3)
+time_steps = np.arange(0, 10.3, 0.3)
 
 complex_evolution = Table()
 complex_evolution['complex_id'] = input_table['clump_id']
@@ -84,7 +84,6 @@ for complex_index in range(len(output_table)):
 
     model_components = {}
     model_components["redshift"] = 0.0045
-        # input_table['galaxy_redshift'][complex_index]
 
     model_components["delayed"] = dexp
 
@@ -132,7 +131,6 @@ for complex_index in range(len(output_table)):
 
         model_new = pipes.model_galaxy(model_components, filt_list=filter_files_extended, spec_wavs=np.arange(2400, 9100, 1))
 
-        # dm = calc_dm(input_table['galaxy_redshift'][complex_index])
         dm = 31.51
 
         magnitudes.append(ergstoabmags(model_new.photometry[2], 5887.70))
@@ -163,5 +161,5 @@ for complex_index in range(len(output_table)):
     complex_evolution['absolute_magnitudes_R'][complex_index] = absolute_magnitudes_R
     complex_evolution['stellar_mass'][complex_index] = stellar_mass
 
-complex_evolution.write('/home/ariel/Workspace/GASP/HST/Data/complex_evolution_fornax.fits', overwrite=True)
+complex_evolution.write('/home/ariel/Workspace/GASP/HST/Data/complex_evolution_fornax_10.fits', overwrite=True)
 
