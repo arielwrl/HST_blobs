@@ -14,17 +14,26 @@ import os
 from astropy.table import Table
 from hst_pipeutils import load_data
 from toolbox.stat_tools import gini, find_maximum, find_pdf_peaks
+from pydrive.auth import GoogleAuth 
+from pydrive.drive import GoogleDrive
+import glob
 
 plt.ioff()
 
-detection = 'halpha'
-config = 'dexp_logprior_single'
-run_flag = False
+gauth = GoogleAuth()
+gauth.LocalWebserverAuth()
 
-pipes_dir = '/home/ariel/Workspace/GASP/HST/Mass Function/'
-data_dir = '/home/ariel/Workspace/GASP/HST/Mass Function/Data/'
+drive = GoogleDrive(gauth)
 
-clump_catalog = Table.read(data_dir+detection+'_bagpipes_input.fits')
+detection = 'f275w'
+config = 'dexp_logpriorteeeeeeTEEEEESTTTSTST_double'
+run_flag = True
+region = 'disk'
+
+pipes_dir = '/home/ariel/Workspace/Mass Function/'
+data_dir = '/home/ariel/Workspace/Mass Function/Data/'
+
+clump_catalog = Table.read(data_dir + detection + '_' + region + '_bagpipes_input.fits')
 clump_catalog['fit_id'] = [clump_catalog['clump_id'][i] + '_' + config for i in range(len(clump_catalog))]
 
 filter_files = [data_dir + 'filters/HST_WFC3_UVIS2.F275W.dat',
@@ -117,6 +126,17 @@ for clump_id in clump_catalog['fit_id']:
     if ((clump_id+'.h5' in file_list) or (clump_id+'_resume.dat' in file_list)) and run_flag is True:
         continue
 
+    double_runs = drive.CreateFile({'id': '1fqq4n3J99VvRvQbIMw-d9SfszXJqyaYa'})
+    double_runs_string = double_runs.GetContentString()
+    double_runs_list = double_runs_string.split("\n")
+    if clump_id + '.h5' in double_runs_list:
+    	print("FILE IN GDRIVE LIST")
+    else:
+        double_runs_string += clump_id + '.h5\n'
+        file = drive.CreateFile({'title': 'double_runs', 'parents' : [{'id' : '1Z1-ILMs-Z94gqODvfLlvLWWPA_mh4Xd_'}]})  
+    file.SetContentString(double_runs_string)
+    file.Upload()	
+
     pipes_clump = pipes.galaxy(clump_id, clump_catalog, load_data, filt_list=filter_files, spectrum_exists=False,
                                phot_units='ergscma', spec_wavs=np.arange(2400, 8100, 1))
 
@@ -170,14 +190,14 @@ for clump_id in clump_catalog['fit_id']:
 
         fit.posterior.get_advanced_quantities()
 
-        wl = fit.posterior.model_galaxy.wavelengths
+        # wl = fit.posterior.model_galaxy.wavelengths
 
-        flux_med = np.median(fit.posterior.samples['spectrum_full'], axis=0) / 1e-18
-        flux_25 = np.percentile(fit.posterior.samples['spectrum_full'], 25, axis=0) / 1e-18
-        flux_75 = np.percentile(fit.posterior.samples['spectrum_full'], 75, axis=0) / 1e-18
+        # flux_med = np.median(fit.posterior.samples['spectrum_full'], axis=0) / 1e-18
+        # flux_25 = np.percentile(fit.posterior.samples['spectrum_full'], 25, axis=0) / 1e-18
+        # flux_75 = np.percentile(fit.posterior.samples['spectrum_full'], 75, axis=0) / 1e-18
 
-        np.savetxt('/home/ariel/Workspace/GASP/HST/Data/full_spectra/' + clump_id + '.dat',
-                   np.array([wl, flux_med, flux_25, flux_75]).transpose())
+        # np.savetxt('/home/ariel/Workspace/GASP/HST/Data/full_spectra/' + clump_id + '.dat',
+        #            np.array([wl, flux_med, flux_25, flux_75]).transpose())
 
         output_catalog['galaxy'][clump_index] = clump_id.split('_')[0]
 
@@ -272,5 +292,5 @@ for clump_id in clump_catalog['fit_id']:
         output_catalog['Hb'][clump_index] = fit.posterior.model_galaxy.line_fluxes['H  1  4861.33A']
 
 if run_flag is False:
-    output_catalog.write(data_dir + detection + '_' + config + '_bagpipes_results.fits', overwrite=True)
+    output_catalog.write(data_dir + detection + '_' + region + '_' + config + '_bagpipes_results.fits', overwrite=True)
 
